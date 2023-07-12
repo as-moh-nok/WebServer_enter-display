@@ -10,6 +10,7 @@
 *********/
 
 #include <Arduino.h>
+#include <iostream>
 #ifdef ESP32
   #include <WiFi.h>
   #include <AsyncTCP.h>
@@ -18,11 +19,12 @@
   #include <ESPAsyncTCP.h>
 #endif
 #include <ESPAsyncWebServer.h>
-//#include <SPIFFS.h>
+#include <SPIFFS.h>
 #include <Preferences.h>
 
 AsyncWebServer server(80);
 Preferences preferences;//save Contact in nvs
+void appendLog(const char* message);
 
 // REPLACE WITH YOUR NETWORK CREDENTIALS
 const char* ssid = "hwa";
@@ -144,20 +146,76 @@ void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
 
+void startLog(){
+  SPIFFS.begin();
+  SPIFFS.open("/log.txt", FILE_WRITE);
+   File logFile = SPIFFS.open("/log.txt", "a");
+  if (!logFile) {
+    Serial.println("no log file");
+    return;
+  }
+
+  // Append the log message to the file
+  logFile.println("WellCome to ContactBook Webserver:");
+  logFile.close();
+}
 void writeNVS(Preferences& preferences , const char * nameToSave,  const char *phoneToSave, const char *priorityToSave){
   Serial.printf("Save contact: name:%s with %s number and %s priority\r\n", nameToSave, phoneToSave, priorityToSave);
   preferences.begin(nameToSave, false);
 //  preferences.putString("name", stringToSave);
   preferences.putString("phone", phoneToSave);
-  preferences.putString("phone", priorityToSave);
+  preferences.putString("priority", priorityToSave);
+
+  //create a save log to append logFile:
+  char buffer[100];
+  std::sprintf(buffer, "Save contact: name:%s with %s number and %s priority\r\n", nameToSave, phoneToSave, priorityToSave);
+  std::string log = buffer;
+  appendLog(buffer);
+
   Serial.println("Contect save to file!");
   preferences.end();
+}
+void appendLog(const char* message){
+  //Open the log file in "append" mode
+  SPIFFS.begin();
+  File logFile = SPIFFS.open("/log.txt", "a");
+  if(!logFile)
+  {
+    Serial.println("Failed to open log file.");
+    return;
+  }
+
+  //append the log message to file
+  //logFile.println(message);
+  logFile.close();
+}
+
+void sendLogs(AsyncWebServerRequest *request){
+  //log file
+  File logFile = SPIFFS.open("/log.txt", "r");
+  if(!logFile){
+    request->send(200, "text/plain", "No logs available.");
+    return;
+  }
+
+  //Read the log file and send if to the client
+  String logString = "";
+  while(logFile.available()){
+    logString += (char)logFile.read();
+  }
+  logFile.close();
+
+  Serial.println("file log:");
+  Serial.println(logString);
+
+  request->send(200, "text/plain", logString);
 }
 
 void setup() {
   Serial.begin(9600);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+  //startLog(); 
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Failed!");
     return;
@@ -207,6 +265,10 @@ void setup() {
     request->send(200, "text/html", " ");
     }
   });
+  server.on("/log", HTTP_GET, [](AsyncWebServerRequest *request){
+    sendLogs(request);
+  });
+
   server.onNotFound(notFound);
   server.begin();
 }

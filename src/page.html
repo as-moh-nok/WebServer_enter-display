@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      /* Add responsive styles for mobile and desktop */
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, sans-serif;
+      }
+      .container {
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .form-input {
+        display: block;
+        margin-bottom: 10px;
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .form-input:focus {
+        border-color: #007bff;
+        outline: none;
+      }
+      .form-label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 14px;
+        font-weight: bold;
+      }
+      .form-button {
+        display: inline-block;
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+        text-decoration: none;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .form-button:hover {
+        background-color: #0069d9;
+      }
+      .logs {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        height: 200px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Form</h1>
+      <form action="/get" target="hidden-form">
+        <label class="form-label" for="name-input">Name:</label>
+        <input class="form-input" type="text" id="name-input"  name="name" required>
+
+        <label class="form-label" for="phone-input">Phone Number:</label>
+        <input class="form-input" type="tel" id="phone-input"  name="phone" required>
+
+        <label class="form-label" for="priority-input">Priority:</label>
+        <select class="form-input" id="priority-input"  name="priority" required>
+          <option value="">-- Select Priority --</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+
+        <input class="form-button" type="submit" name="action" value="save" onclick="submitContact()">Save</input>
+        <input class="form-button" type="submit" name="action" value="remove">Remove</input>
+        <input class="form-button" type="submit" name="action" value="search">Search</button>
+      </form>
+      <iframe style="display:none" name="hidden-form"></iframe>
+      <div class="logs">
+        <iframe name="log-form" src="/log" height="200" width="300" title="Logs"></iframe>
+      </div>
+    </div>
+  </body>
+  <script>
+    function submitContact() {
+      alert("Saved Contact to ESP nvs");
+      setTimeout(function(){ document.location.reload(false); }, 500);   
+    }
+    function refreshLogs() {
+      var logFrame = document.getElementsByName("log-form")[0];
+      logFrame.contentDocument.location.reload(true);
+    }
+    setInterval(refreshLogs, 1000);
+  </script>
+</html>

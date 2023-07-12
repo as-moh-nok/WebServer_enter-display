@@ -117,6 +117,7 @@ const char index_html[] PROGMEM = R"rawliteral(
           <option value="low">Low</option>
         </select>
 
+        <input class="form-button" type="submit" name="action" value="save" onclick="submitContact()"></input>
         <input class="form-button" type="submit" name="action" value="save" onclick="submitContact()">Save</input>
       </form>
       <iframe style="display:none" name="hidden-form"></iframe>
@@ -143,11 +144,12 @@ void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
 
-void writeNVS(Preferences& preferences , const char * nameToSave, const char * phoneToSave){
-  Serial.printf("Save contact: name:%s with %s number and no priority\r\n", nameToSave, phoneToSave);
+void writeNVS(Preferences& preferences , const char * nameToSave,  const char *phoneToSave, const char *priorityToSave){
+  Serial.printf("Save contact: name:%s with %s number and %s priority\r\n", nameToSave, phoneToSave, priorityToSave);
   preferences.begin(nameToSave, false);
 //  preferences.putString("name", stringToSave);
   preferences.putString("phone", phoneToSave);
+  preferences.putString("phone", priorityToSave);
   Serial.println("Contect save to file!");
   preferences.end();
 }
@@ -174,6 +176,7 @@ void setup() {
   server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
     String inputName;
     String inputPhone;
+    String inputPriority;
     String buttonSubmit;
     // GET input1 value on <ESP_IP>/get?input1=<inputMessage>
     if (request->hasParam("action")) {
@@ -181,9 +184,10 @@ void setup() {
       //inputPhone = request->getParam("save")->value();
       if(action == "save"){
       Serial.println("save");
-      inputName = request->getParam("save")->value();
-      inputPhone = request->getParam("save")->value();
-      writeNVS(preferences, inputName.c_str(),  inputPhone.c_str());
+      inputName = request->getParam("name")->value();
+      inputPhone = request->getParam("phone")->value();
+      inputPriority = request->getParam("priority")->value();
+      writeNVS(preferences, inputName.c_str(),  inputPhone.c_str(), inputPriority.c_str());
       }
       else if (action == "remove"){
       Serial.println("remove");

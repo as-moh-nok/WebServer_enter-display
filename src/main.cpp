@@ -103,7 +103,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   </head>
   <body>
     <div class="container">
-      <h1>Form</h1>
+      <h1>Contact Book</h1>
       <form action="/get" target="hidden-form">
         <label class="form-label" for="name-input">Name:</label>
         <input class="form-input" type="text" id="name-input"  name="name" required>
@@ -120,7 +120,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         </select>
 
         <input class="form-button" type="submit" name="action" value="save" onclick="submitContact()"></input>
-        <input class="form-button" type="submit" name="action" value="save" onclick="submitContact()">Save</input>
+        
       </form>
       <iframe style="display:none" name="hidden-form"></iframe>
       <div class="logs">
@@ -142,6 +142,11 @@ const char index_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
+struct Contact{
+  String name;
+  String phone;
+  String priority;
+};
 void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
@@ -156,7 +161,8 @@ void startLog(){
   }
 
   // Append the log message to the file
-  logFile.println("WellCome to ContactBook Webserver:");
+  logFile.println("WellCome to ContactBook Webserver:\n");
+  logFile.println("---------------------------------\n");
   logFile.close();
 }
 void writeNVS(Preferences& preferences , const char * nameToSave,  const char *phoneToSave, const char *priorityToSave){
@@ -186,7 +192,7 @@ void appendLog(const char* message){
   }
 
   //append the log message to file
-  //logFile.println(message);
+  logFile.println(message);
   logFile.close();
 }
 
@@ -205,8 +211,8 @@ void sendLogs(AsyncWebServerRequest *request){
   }
   logFile.close();
 
-  Serial.println("file log:");
-  Serial.println(logString);
+  //Serial.println("file log:");
+  //Serial.println(logString);
 
   request->send(200, "text/plain", logString);
 }
@@ -215,7 +221,7 @@ void setup() {
   Serial.begin(9600);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  //startLog(); 
+  startLog(); 
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Failed!");
     return;
@@ -277,3 +283,6 @@ void loop() {
   
   
 }
+
+
+

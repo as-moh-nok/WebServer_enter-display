@@ -2,8 +2,6 @@
   Rui Santos
   Complete project details at https://RandomNerdTutorials.com/esp32-esp8266-input-data-html-form/
   
-  Modifications and additional features by Asma Mohammadi
-
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files.
   
@@ -13,7 +11,6 @@
 
 #include <Arduino.h>
 #include <iostream>
-
 #ifdef ESP32
   #include <WiFi.h>
   #include <AsyncTCP.h>
@@ -25,37 +22,29 @@
 #include <SPIFFS.h>
 #include <Preferences.h>
 
-// Create a web server instance on port 80
 AsyncWebServer server(80);
-
-// Preferences object to handle NVS storage
-Preferences preferences;
-
-// Function declaration for appending logs
+Preferences preferences;//save Contact in nvs
 void appendLog(const char* message);
 
-// WiFi credentials
-const char* ssid = "hwa";
-const char* password = "wifi1373";
+// REPLACE WITH YOUR NETWORK CREDENTIALS
+const char* ssid = "your ssid";
+const char* password = "your password";
 
-// Form parameter names
 const char* PARAM_NAME = "name";
 const char* PARAM_PHONE = "phone";
 const char* PARAM_PROPRITY= "priority";
 
-// Action names for different operations
 const char* SAVE_ACTION= "save";
 const char* REMOVE_ACTION="remove";
 const char* SEARCH_ACTION="search";
-
-// HTML web page template stored in program memory
+// HTML web page to handle 3 input fields (input1, input2, input3)
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-      /* CSS styles for responsiveness and form appearance */
+      /* Add responsive styles for mobile and desktop */
       * {
         box-sizing: border-box;
       }
@@ -131,6 +120,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         </select>
 
         <input class="form-button" type="submit" name="action" value="save" onclick="submitContact()"></input>
+        
       </form>
       <iframe style="display:none" name="hidden-form"></iframe>
       <div class="logs">
@@ -139,9 +129,8 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
   </body>
   <script>
-    // JavaScript to handle form submission and log refreshing
     function submitContact() {
-      alert("Saved Contact to ESP NVS");
+      alert("Saved Contact to ESP nvs");
       setTimeout(function(){ document.location.reload(false); }, 500);   
     }
     function refreshLogs() {
@@ -153,76 +142,78 @@ const char index_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-// Structure to store contact information
 struct Contact{
   String name;
   String phone;
   String priority;
 };
-
-// Handler for 404 errors (not found)
 void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
 
-// Function to initialize logging
 void startLog(){
   SPIFFS.begin();
   SPIFFS.open("/log.txt", FILE_WRITE);
-  File logFile = SPIFFS.open("/log.txt", "a");
+   File logFile = SPIFFS.open("/log.txt", "a");
   if (!logFile) {
-    Serial.println("No log file");
+    Serial.println("no log file");
     return;
   }
 
-  // Append welcome message to the log file
-  logFile.println("Welcome to ContactBook Webserver:\n");
+  // Append the log message to the file
+  logFile.println("WellCome to ContactBook Webserver:\n");
   logFile.println("---------------------------------\n");
   logFile.close();
 }
-
-// Function to save contact information in NVS
-void writeNVS(Preferences& preferences , const char * nameToSave, const char *phoneToSave, const char *priorityToSave){
+void writeNVS(Preferences& preferences , const char * nameToSave,  const char *phoneToSave, const char *priorityToSave){
   Serial.printf("Save contact: name:%s with %s number and %s priority\r\n", nameToSave, phoneToSave, priorityToSave);
   preferences.begin(nameToSave, false);
+//  preferences.putString("name", stringToSave);
   preferences.putString("phone", phoneToSave);
   preferences.putString("priority", priorityToSave);
 
-  // Log the save action
+  //create a save log to append logFile:
   char buffer[100];
   std::sprintf(buffer, "Save contact: name:%s with %s number and %s priority\r\n", nameToSave, phoneToSave, priorityToSave);
+  std::string log = buffer;
   appendLog(buffer);
 
-  Serial.println("Contact saved to file!");
+  Serial.println("Contect save to file!");
   preferences.end();
 }
-
-// Function to append messages to the log file
 void appendLog(const char* message){
+  //Open the log file in "append" mode
   SPIFFS.begin();
   File logFile = SPIFFS.open("/log.txt", "a");
-  if (!logFile) {
+  if(!logFile)
+  {
     Serial.println("Failed to open log file.");
     return;
   }
 
+  //append the log message to file
   logFile.println(message);
   logFile.close();
 }
 
-// Function to send log content to the client
 void sendLogs(AsyncWebServerRequest *request){
+  //log file
   File logFile = SPIFFS.open("/log.txt", "r");
-  if (!logFile) {
+  if(!logFile){
     request->send(200, "text/plain", "No logs available.");
     return;
   }
 
+  //Read the log file and send if to the client
   String logString = "";
-  while (logFile.available()) {
+  while(logFile.available()){
     logString += (char)logFile.read();
   }
   logFile.close();
+
+  //Serial.println("file log:");
+  //Serial.println(logString);
+
   request->send(200, "text/plain", logString);
 }
 
@@ -240,29 +231,46 @@ void setup() {
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 
-  // Set up server routes
+  // Send web page with input fields to client
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html);
   });
 
-  // Handle form submissions
+  // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
   server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    String inputName, inputPhone, inputPriority;
+    String inputName;
+    String inputPhone;
+    String inputPriority;
+    String buttonSubmit;
+    // GET input1 value on <ESP_IP>/get?input1=<inputMessage>
     if (request->hasParam("action")) {
       String action = request->getParam("action")->value();
-      if (action == "save") {
-        inputName = request->getParam("name")->value();
-        inputPhone = request->getParam("phone")->value();
-        inputPriority = request->getParam("priority")->value();
-        writeNVS(preferences, inputName.c_str(), inputPhone.c_str(), inputPriority.c_str());
-      } else {
-        Serial.println("No valid action received");
+      //inputPhone = request->getParam("save")->value();
+      if(action == "save"){
+      Serial.println("save");
+      inputName = request->getParam("name")->value();
+      inputPhone = request->getParam("phone")->value();
+      inputPriority = request->getParam("priority")->value();
+      writeNVS(preferences, inputName.c_str(),  inputPhone.c_str(), inputPriority.c_str());
       }
-    }
-    request->send(200, "text/html", " ");
-  });
+      else if (action == "remove"){
+      Serial.println("remove");
 
-  // Route to send logs
+      }
+      else if (action == "search")
+    {
+      Serial.println("search");
+    }
+    else {
+      //inputName = "No message sent";
+      //inputPhone = "none";
+      Serial.println("No message sent");
+
+    }
+    //Serial.println(No message sent);
+    request->send(200, "text/html", " ");
+    }
+  });
   server.on("/log", HTTP_GET, [](AsyncWebServerRequest *request){
     sendLogs(request);
   });
@@ -272,5 +280,9 @@ void setup() {
 }
 
 void loop() {
-  // Empty loop; most logic is handled in callbacks
+  
+  
 }
+
+
+

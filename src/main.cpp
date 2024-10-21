@@ -35,8 +35,8 @@ Preferences preferences;
 void appendLog(const char* message);
 
 // WiFi credentials
-const char* ssid = "hwa";
-const char* password = "wifi1373";
+const char* ssid = "your ssid";
+const char* password = "your password";
 
 // Form parameter names
 const char* PARAM_NAME = "name";
